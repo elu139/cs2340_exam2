@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-3 mt-4">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card shadow p-3 mb-4 rounded">
+          <div class="card-body">
+            <h2>Create Movie Petition</h2>
+            <hr />
+            <p class="text-muted">Request a movie to be added to our catalog. Other users will be able to vote on your petition!</p>
+            
+            <!-- Messages -->
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            
+            <form method="POST">
+              {% csrf_token %}
+              <div class="form-group mb-3">
+                <label for="movie_title" class="form-label">Movie Title <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="movie_title" name="movie_title" 
+                       placeholder="Enter the movie title" maxlength="255" required
+                       value="{{ template_data.movie_title|default:'' }}">
+                <small class="form-text text-muted">The exact title of the movie you want added</small>
+              </div>
+              
+              <div class="form-group mb-3">
+                <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="description" name="description" 
+                          rows="5" placeholder="Why should this movie be added to our catalog?" 
+                          required>{{ template_data.description|default:'' }}</textarea>
+                <small class="form-text text-muted">
+                  Explain why this movie would be a great addition. Include details like genre, director, stars, or why customers would want to watch it.
+                </small>
+              </div>
+              
+              <div class="text-center">
+                <button type="submit" class="btn btn-dark me-2">
+                  <i class="fas fa-paper-plane"></i> Create Petition
+                </button>
+                <a href="{% url 'movies.petitions' %}" class="btn btn-secondary">
+                  <i class="fas fa-arrow-left"></i> Back to Petitions
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

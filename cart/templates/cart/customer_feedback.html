@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-3">
+  <div class="container">
+    <div class="row mt-3">
+      <div class="col mx-auto mb-3">
+        <h2>Customer Feedback</h2>
+        <hr />
+        <p class="text-muted mb-4">Here's what our customers are saying about their checkout experience:</p>
+        
+        <!-- Feedback entries -->
+        {% for feedback in template_data.page_obj %}
+        <div class="card mb-3" style="border-left: 4px solid #6c757d;">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <h5 class="card-title mb-2">{{ feedback.display_name }}</h5>
+                <p class="card-text">{{ feedback.feedback_text }}</p>
+              </div>
+              <div class="text-muted text-end ms-3">
+                <small>Order #{{ feedback.order.id }} - {{ feedback.created_at|date:"M j, Y g:i A" }}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5">
+          <h4 class="text-muted">No feedback yet</h4>
+          <p class="text-muted">Customer feedback will appear here after checkout.</p>
+        </div>
+        {% endfor %}
+        
+        <!-- Pagination -->
+        {% if template_data.page_obj.has_other_pages %}
+        <nav aria-label="Feedback pagination" class="mt-4">
+          <ul class="pagination justify-content-center">
+            {% if template_data.page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page=1" aria-label="First">
+                  <span aria-hidden="true">&laquo;&laquo;</span>
+                </a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ template_data.page_obj.previous_page_number }}" aria-label="Previous">
+                  <span aria-hidden="true">&laquo;</span>
+                </a>
+              </li>
+            {% endif %}
+            
+            {% for num in template_data.page_obj.paginator.page_range %}
+              {% if template_data.page_obj.number == num %}
+                <li class="page-item active">
+                  <span class="page-link">{{ num }}</span>
+                </li>
+              {% else %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+              {% endif %}
+            {% endfor %}
+            
+            {% if template_data.page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ template_data.page_obj.next_page_number }}" aria-label="Next">
+                  <span aria-hidden="true">&raquo;</span>
+                </a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ template_data.page_obj.paginator.num_pages }}" aria-label="Last">
+                  <span aria-hidden="true">&raquo;&raquo;</span>
+                </a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+        {% endif %}
+        
+        <!-- Summary -->
+        <div class="mt-4 p-3 bg-light rounded">
+          <h6>Summary</h6>
+          <p class="mb-0">Total Feedback Received: <strong>{{ template_data.total_feedback }}</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.card-text {
+    line-height: 1.6;
+    color: #333;
+}
+
+.pagination .page-link {
+    color: #6c757d;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+</style>
+{% endblock content %}
