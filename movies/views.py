@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Movie, Review
+from .models import Movie, Review, Rating
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.contrib.auth.decorators import login_required
-from .models import Movie, Review, Petition, PetitionUpvote
+from .models import Movie, Review, Rating, Petition, PetitionUpvote
 from django.http import JsonResponse
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -28,11 +28,22 @@ def index(request):
 def show(request, id):
     movie = Movie.objects.get(id=id)
     reviews = Review.objects.filter(movie=movie)
+    
+    # Get rating information
+    user_rating = None
+    if request.user.is_authenticated:
+        try:
+            user_rating = Rating.objects.get(movie=movie, user=request.user)
+        except Rating.DoesNotExist:
+            user_rating = None
 
     template_data = {}
     template_data['title'] = movie.name
     template_data['movie'] = movie
     template_data['reviews'] = reviews
+    template_data['user_rating'] = user_rating
+    template_data['average_rating'] = movie.average_rating()
+    template_data['total_ratings'] = movie.total_ratings()
     return render(request, 'movies/show.html', {'template_data': template_data})
 
 @login_required
@@ -71,6 +82,30 @@ def edit_review(request, id, review_id):
 def delete_review(request, id, review_id):
     review = get_object_or_404(Review, id=review_id, user=request.user)
     review.delete()
+    return redirect('movies.show', id=id)
+
+@login_required
+def submit_rating(request, id):
+    """Submit or update a rating for a movie"""
+    if request.method == 'POST':
+        movie = get_object_or_404(Movie, id=id)
+        stars = request.POST.get('stars')
+        
+        if stars and stars.isdigit() and 1 <= int(stars) <= 5:
+            # Update or create rating
+            rating, created = Rating.objects.update_or_create(
+                movie=movie,
+                user=request.user,
+                defaults={'stars': int(stars)}
+            )
+            
+            if created:
+                messages.success(request, f'Rating submitted: {stars} stars!')
+            else:
+                messages.success(request, f'Rating updated: {stars} stars!')
+        else:
+            messages.error(request, 'Invalid rating value.')
+    
     return redirect('movies.show', id=id)
 
 def petitions_index(request):
