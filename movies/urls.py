@@ -11,4 +11,6 @@ urlpatterns = [
     path('petitions/', views.petitions_index, name='movies.petitions'),
     path('petitions/create/', views.create_petition, name='movies.create_petition'),
     path('petitions/<int:petition_id>/upvote/', views.upvote_petition, name='movies.upvote_petition'),
+    path('popularity-map/', views.popularity_map, name='movies.popularity_map'),
+    path('popularity-map/data/', views.popularity_map_data, name='movies.popularity_map_data'),
 ]
