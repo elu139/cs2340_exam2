@@ -29,13 +29,15 @@
             <a class="nav-link" href="{% url 'home.about' %}">About</a>
             <a class="nav-link" href="{% url 'movies.index' %}">Movies</a>
             <a class="nav-link" href="{% url 'cart.index' %}">Cart</a>
-            <!-- Customer Feedback navigation link -->
             <a class="nav-link" href="{% url 'cart.customer_feedback' %}">Customer Feedback</a>
-            <!-- NEW: Petitions navigation link -->
             <a class="nav-link" href="{% url 'movies.petitions' %}">Petitions</a>
+            {% if user.is_authenticated %}
+            <a class="nav-link" href="{% url 'movies.popularity_map' %}">Local Popularity Map</a>
+            {% endif %}
             <div class="vr bg-white mx-2 d-none d-lg-block"></div>
             {% if user.is_authenticated %}
             <a class="nav-link" href="{% url 'accounts.orders' %}">Orders</a>
+            <a class="nav-link" href="{% url 'accounts.profile' %}">Profile</a>
             <a class="nav-link" href="{% url 'accounts.logout' %}">Logout ({{ user.username }})</a>
             {% else %}
             <a class="nav-link" href="{% url 'accounts.login' %}">Login</a>

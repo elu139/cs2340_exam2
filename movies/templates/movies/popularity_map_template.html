@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-3">
+  <div class="container-fluid">
+    <div class="row mt-3">
+      <div class="col-12">
+        <h2>Local Popularity Map</h2>
+        <p class="text-muted">Discover which movies are trending in different states across the US. Click on any state to see the top 3 most purchased movies!</p>
+        <hr />
+        
+        <!-- User's State Info -->
+        <div class="alert alert-info">
+          <strong>Your State:</strong> 
+          {% if user.userprofile.state %}
+            {{ user.userprofile.get_state_display }}
+          {% else %}
+            Not set. <a href="{% url 'accounts.profile' %}">Update your profile</a> to set your state.
+          {% endif %}
+        </div>
+        
+        <!-- Map Container -->
+        <div id="map" style="height: 600px; width: 100%; border: 2px solid #ddd; border-radius: 8px;"></div>
+        
+        <!-- Legend -->
+        <div class="mt-3 p-3 bg-light rounded">
+          <h6>Legend</h6>
+          <div class="d-flex gap-3">
+            <div><span class="badge" style="background-color: #FFD700;">🥇</span> 1st Place</div>
+            <div><span class="badge" style="background-color: #C0C0C0;">🥈</span> 2nd Place</div>
+            <div><span class="badge" style="background-color: #CD7F32;">🥉</span> 3rd Place</div>
+          </div>
+          <p class="mt-2 mb-0 small text-muted">Click on any state to see its top trending movies based on total purchases.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Google Maps API Script -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDZkyc4GsIiQjpU4PwXvnMQ1_dmPM0Cs9U&callback=initMap" async defer></script>
+
+<script>
+let map;
+let stateData = {};
+let infoWindow;
+
+// State coordinates (approximate center of each state)
+const stateCoordinates = {
+  'AL': {lat: 32.806671, lng: -86.791130}, 'AK': {lat: 61.370716, lng: -152.404419},
+  'AZ': {lat: 33.729759, lng: -111.431221}, 'AR': {lat: 34.969704, lng: -92.373123},
+  'CA': {lat: 36.116203, lng: -119.681564}, 'CO': {lat: 39.059811, lng: -105.311104},
+  'CT': {lat: 41.597782, lng: -72.755371}, 'DE': {lat: 39.318523, lng: -75.507141},
+  'FL': {lat: 27.766279, lng: -81.686783}, 'GA': {lat: 33.040619, lng: -83.643074},
+  'HI': {lat: 21.094318, lng: -157.498337}, 'ID': {lat: 44.240459, lng: -114.478828},
+  'IL': {lat: 40.349457, lng: -88.986137}, 'IN': {lat: 39.849426, lng: -86.258278},
+  'IA': {lat: 42.011539, lng: -93.210526}, 'KS': {lat: 38.526600, lng: -96.726486},
+  'KY': {lat: 37.668140, lng: -84.670067}, 'LA': {lat: 31.169546, lng: -91.867805},
+  'ME': {lat: 44.693947, lng: -69.381927}, 'MD': {lat: 39.063946, lng: -76.802101},
+  'MA': {lat: 42.230171, lng: -71.530106}, 'MI': {lat: 43.326618, lng: -84.536095},
+  'MN': {lat: 45.694454, lng: -93.900192}, 'MS': {lat: 32.741646, lng: -89.678696},
+  'MO': {lat: 38.456085, lng: -92.288368}, 'MT': {lat: 46.921925, lng: -110.454353},
+  'NE': {lat: 41.125370, lng: -98.268082}, 'NV': {lat: 38.313515, lng: -117.055374},
+  'NH': {lat: 43.452492, lng: -71.563896}, 'NJ': {lat: 40.298904, lng: -74.521011},
+  'NM': {lat: 34.840515, lng: -106.248482}, 'NY': {lat: 42.165726, lng: -74.948051},
+  'NC': {lat: 35.630066, lng: -79.806419}, 'ND': {lat: 47.528912, lng: -99.784012},
+  'OH': {lat: 40.388783, lng: -82.764915}, 'OK': {lat: 35.565342, lng: -96.928917},
+  'OR': {lat: 44.572021, lng: -122.070938}, 'PA': {lat: 40.590752, lng: -77.209755},
+  'RI': {lat: 41.680893, lng: -71.511780}, 'SC': {lat: 33.856892, lng: -80.945007},
+  'SD': {lat: 44.299782, lng: -99.438828}, 'TN': {lat: 35.747845, lng: -86.692345},
+  'TX': {lat: 31.054487, lng: -97.563461}, 'UT': {lat: 40.150032, lng: -111.862434},
+  'VT': {lat: 44.045876, lng: -72.710686}, 'VA': {lat: 37.769337, lng: -78.169968},
+  'WA': {lat: 47.400902, lng: -121.490494}, 'WV': {lat: 38.491226, lng: -80.954453},
+  'WI': {lat: 44.268543, lng: -89.616508}, 'WY': {lat: 42.755966, lng: -107.302490}
+};
+
+function initMap() {
+  // Create map centered on US
+  map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 4,
+    center: {lat: 39.8283, lng: -98.5795}, // Center of US
+    mapTypeId: 'roadmap'
+  });
+
+  infoWindow = new google.maps.InfoWindow();
+
+  // Fetch state data
+  fetch('{% url "movies.popularity_map_data" %}')
+    .then(response => response.json())
+    .then(data => {
+      stateData = data;
+      addStateMarkers();
+    })
+    .catch(error => {
+      console.error('Error loading map data:', error);
+      alert('Error loading popularity data. Please refresh the page.');
+    });
+}
+
+function addStateMarkers() {
+  // Add markers for each state
+  Object.keys(stateCoordinates).forEach(stateCode => {
+    const coords = stateCoordinates[stateCode];
+    const data = stateData[stateCode];
+    
+    if (!data) return;
+    
+    // Determine marker color based on whether state has data
+    const hasData = data.top_movies && data.top_movies.length > 0;
+    const markerColor = hasData ? '#4285F4' : '#999999';
+    
+    const marker = new google.maps.Marker({
+      position: coords,
+      map: map,
+      title: data.state_name,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: markerColor,
+        fillOpacity: 0.8,
+        strokeColor: '#ffffff',
+        strokeWeight: 2
+      }
+    });
+
+    // Add click listener to show info window
+    marker.addListener('click', () => {
+      showStateInfo(stateCode, marker);
+    });
+  });
+}
+
+function showStateInfo(stateCode, marker) {
+  const data = stateData[stateCode];
+  
+  if (!data) {
+    infoWindow.setContent('<div class="p-2"><strong>Data unavailable</strong></div>');
+    infoWindow.open(map, marker);
+    return;
+  }
+  
+  let content = `
+    <div style="padding: 10px; max-width: 300px;">
+      <h5 style="margin-bottom: 10px; color: #333;">${data.state_name}</h5>
+  `;
+  
+  if (data.top_movies && data.top_movies.length > 0) {
+    content += '<p style="margin-bottom: 8px; font-weight: bold;">Top Trending Movies:</p>';
+    content += '<ol style="margin: 0; padding-left: 20px;">';
+    
+    data.top_movies.forEach((movie, index) => {
+      let badgeColor;
+      let medal;
+      if (index === 0) {
+        badgeColor = '#FFD700'; // Gold
+        medal = '🥇';
+      } else if (index === 1) {
+        badgeColor = '#C0C0C0'; // Silver
+        medal = '🥈';
+      } else {
+        badgeColor = '#CD7F32'; // Bronze
+        medal = '🥉';
+      }
+      
+      content += `
+        <li style="margin-bottom: 5px;">
+          <span style="background-color: ${badgeColor}; padding: 2px 6px; border-radius: 3px; margin-right: 5px;">${medal}</span>
+          <strong>${movie.title}</strong>
+          <br><small style="color: #666; margin-left: 28px;">${movie.purchases} purchase${movie.purchases !== 1 ? 's' : ''}</small>
+        </li>
+      `;
+    });
+    
+    content += '</ol>';
+  } else {
+    content += '<p style="color: #999; font-style: italic;">No data yet for this state.</p>';
+  }
+  
+  content += '</div>';
+  
+  infoWindow.setContent(content);
+  infoWindow.open(map, marker);
+}
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  if (map) {
+    google.maps.event.trigger(map, 'resize');
+    map.setCenter({lat: 39.8283, lng: -98.5795});
+  }
+});
+</script>
+
+<style>
+#map {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.gm-style .gm-style-iw-c {
+  padding: 0 !important;
+}
+
+.gm-style .gm-style-iw-d {
+  overflow: auto !important;
+}
+</style>
+{% endblock content %}

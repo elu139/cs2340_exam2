@@ -1,9 +1,8 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth import login as auth_login, authenticate, logout as auth_logout
-from .forms import CustomUserCreationForm, CustomErrorList
-from django.shortcuts import redirect
+from django.contrib import messages
+from .forms import CustomUserCreationForm, CustomErrorList, UserProfileForm
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
 
 @login_required
 def logout(request):
@@ -35,6 +34,7 @@ def signup(request):
         form = CustomUserCreationForm(request.POST, error_class=CustomErrorList)
         if form.is_valid():
             form.save()
+            messages.success(request, 'Account created successfully! Please log in.')
             return redirect('accounts.login')
         else:
             template_data['form'] = form
@@ -46,3 +46,21 @@ def orders(request):
     template_data['title'] = 'Orders'
     template_data['orders'] = request.user.order_set.all()
     return render(request, 'accounts/orders.html', {'template_data': template_data})
+
+@login_required
+def profile(request):
+    template_data = {}
+    template_data['title'] = 'My Profile'
+    
+    if request.method == 'GET':
+        template_data['form'] = UserProfileForm(instance=request.user.userprofile)
+        return render(request, 'accounts/profile.html', {'template_data': template_data})
+    elif request.method == 'POST':
+        form = UserProfileForm(request.POST, instance=request.user.userprofile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('accounts.profile')
+        else:
+            template_data['form'] = form
+            return render(request, 'accounts/profile.html', {'template_data': template_data})

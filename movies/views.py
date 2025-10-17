@@ -1,17 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Movie, Review, Rating
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.db import IntegrityError
-from django.contrib.auth.decorators import login_required
 from .models import Movie, Review, Rating, Petition, PetitionUpvote
+from cart.models import Order, Item
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db import IntegrityError
+from django.db.models import Count
 
 def index(request):
     search_term = request.GET.get('search')
@@ -110,8 +105,6 @@ def submit_rating(request, id):
 
 def petitions_index(request):
     """Display all movie petitions"""
-    from .models import Petition, PetitionUpvote
-
     petitions_list = Petition.objects.all().order_by('-upvotes', '-created_at')
 
     # Pagination - 10 petitions per page
@@ -136,8 +129,6 @@ def petitions_index(request):
 @login_required
 def create_petition(request):
     """Create a new movie petition"""
-    from .models import Petition
-
     if request.method == 'GET':
         template_data = {
             'title': 'Create Movie Petition'
@@ -181,8 +172,6 @@ def create_petition(request):
 @login_required
 def upvote_petition(request, petition_id):
     """Handle upvoting a petition via AJAX"""
-    from .models import Petition, PetitionUpvote
-
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
 
@@ -228,3 +217,47 @@ def upvote_petition(request, petition_id):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': 'An error occurred while processing your upvote'}, status=500)
+
+@login_required
+def popularity_map(request):
+    """Display the Local Popularity Map page"""
+    template_data = {
+        'title': 'Local Popularity Map'
+    }
+    return render(request, 'movies/popularity_map.html', {'template_data': template_data})
+
+@login_required
+def popularity_map_data(request):
+    """API endpoint to get trending movies by state"""
+    from accounts.models import UserProfile
+    
+    # Get all states with their top movies
+    state_data = {}
+    
+    # Get all US states
+    all_states = [state_code for state_code, state_name in UserProfile.US_STATES]
+    
+    for state_code in all_states:
+        # Count movie purchases in this state using optimized query
+        movie_counts = Item.objects.filter(
+            order__user__userprofile__state=state_code
+        ).values(
+            'movie__id', 'movie__name'
+        ).annotate(
+            total_purchases=Count('id')
+        ).order_by('-total_purchases')[:3]
+        
+        top_movies = []
+        for idx, movie_data in enumerate(movie_counts):
+            top_movies.append({
+                'rank': idx + 1,
+                'title': movie_data['movie__name'],
+                'purchases': movie_data['total_purchases']
+            })
+        
+        state_data[state_code] = {
+            'state_name': dict(UserProfile.US_STATES)[state_code],
+            'top_movies': top_movies
+        }
+    
+    return JsonResponse(state_data)
