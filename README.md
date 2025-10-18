@@ -4,3 +4,5 @@
 ### 2. As a User, I want to rate movies (e.g., 1-5 stars) so I can quickly share feedback without writing a full review.
 
 ## Note: Assignment 2 codebase is derived from Ethan Lu's Movies Store codebase. Since all five team members made revisions to their codebases via Python Anywhere directly, it was agreed to start a new GitHub repo based on Ethan's codebase since his repo had the least number of updates needed to be made.
+
+### https://lxnar158.pythonanywhere.com/
